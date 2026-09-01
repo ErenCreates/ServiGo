@@ -12,6 +12,7 @@ class ServiceProvider extends Model
         'category_id',
         'company_name',
         'bio',
+        'working_hours',
     ];
 
     public function user(): BelongsTo
@@ -22,5 +23,30 @@ class ServiceProvider extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ServiceCategory::class, 'category_id');
+    }
+
+    public function serviceRequests(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ServiceRequest::class, 'provider_id');
+    }
+
+    public function reviews(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Review::class, 'provider_id');
+    }
+
+    public function appointments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Appointment::class, 'provider_id');
+    }
+
+    public function approvedReviews(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->reviews()->where('is_approved', true);
+    }
+
+    public function averageRating(): float
+    {
+        return round((float) $this->approvedReviews()->avg('rating') ?: 0, 1);
     }
 }

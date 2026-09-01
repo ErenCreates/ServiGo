@@ -23,6 +23,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role_id',
+        'is_active',
     ];
 
     /**
@@ -45,6 +46,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -59,6 +61,21 @@ class User extends Authenticatable
     public function serviceProvider(): HasOne
     {
         return $this->hasOne(ServiceProvider::class);
+    }
+
+    public function provider(): HasOne
+    {
+        return $this->hasOne(ServiceProvider::class);
+    }
+
+    public function reviews(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Review::class, 'customer_id');
+    }
+
+    public function appointments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Appointment::class, 'customer_id');
     }
 
     // --- YARDIMCI METOTLAR (HELPER METHODS) ---

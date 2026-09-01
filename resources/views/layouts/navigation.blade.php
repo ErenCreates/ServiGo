@@ -12,9 +12,25 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route(Auth::user()->homeRoute())" :active="request()->routeIs('customer.dashboard', 'provider.dashboard')">
+                    <x-nav-link :href="route(Auth::user()->homeRoute())" :active="request()->routeIs('customer.dashboard', 'provider.dashboard', 'admin.dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+
+                    @if(Auth::user()->isCustomer())
+                        <x-nav-link :href="route('customer.appointments.index')" :active="request()->routeIs('customer.appointments.*')">
+                            {{ __('Randevularım') }}
+                        </x-nav-link>
+                    @elseif(Auth::user()->isProvider())
+                        <x-nav-link :href="route('provider.appointments.index')" :active="request()->routeIs('provider.appointments.*')">
+                            {{ __('Randevularım') }}
+                        </x-nav-link>
+                    @endif
+
+                    @if(Auth::user()->isAdmin())
+                        <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
+                            {{ __('Yönetim Paneli') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -67,9 +83,25 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route(Auth::user()->homeRoute())" :active="request()->routeIs('customer.dashboard', 'provider.dashboard')">
+            <x-responsive-nav-link :href="route(Auth::user()->homeRoute())" :active="request()->routeIs('customer.dashboard', 'provider.dashboard', 'admin.dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+
+            @if(Auth::user()->isCustomer())
+                <x-responsive-nav-link :href="route('customer.appointments.index')" :active="request()->routeIs('customer.appointments.*')">
+                    {{ __('Randevularım') }}
+                </x-responsive-nav-link>
+            @elseif(Auth::user()->isProvider())
+                <x-responsive-nav-link :href="route('provider.appointments.index')" :active="request()->routeIs('provider.appointments.*')">
+                    {{ __('Randevularım') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @if(Auth::user()->isAdmin())
+                <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
+                    {{ __('Yönetim Paneli') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

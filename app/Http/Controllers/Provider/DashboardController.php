@@ -12,36 +12,159 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request): View
+   public function index()
     {
-        // Güvenlik kontrolü: Giren kişinin rolü Usta olmalı
-        abort_unless((int) $request->user()->role_id === Role::PROVIDER, 403);
+        $user = auth()->user();
 
-        $provider = $request->user()->serviceProvider;
-        $categories = ServiceCategory::orderBy('name')->get();
+        // Ustanın profil bilgileri tam mı?
+        $hasProfile = $user->serviceProvider && !empty($user->serviceProvider->category_id);
 
-        return view('provider.dashboard', compact('provider', 'categories'));
+        $requests = collect();
+
+        if ($hasProfile) {
+            // Ustanın profili varsa kendisine gelen talepleri çekiyoruz
+        $requests = \App\Models\ServiceRequest::with(['customer', 'category'])
+                        ->where('provider_id', $user->serviceProvider->id)
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+        }
+                    
+        return view('provider.dashboard', [
+            'requests' => $requests,
+            'showProfileWarning' => !$hasProfile
+        ]);
     }
 
-    public function update(UpdateProfileRequest $request): RedirectResponse
+    public function editProfile(): View
     {
-        // Not: Yetki kontrolü zaten UpdateProfileRequest içinde authorize() ile yapılıyor.
-        // Ekstra güvenlik için burada kalabilir.
+        $user = auth()->user();
+        $provider = $user->serviceProvider ?? new \App\Models\ServiceProvider();
+        $categories = ServiceCategory::orderBy('name')->get();
+
+        return view('provider.profile_edit', compact('user', 'provider', 'categories'));
+    }
+
+    public function updateProfile(Request $request): RedirectResponse
+    {
         abort_unless((int) $request->user()->role_id === Role::PROVIDER, 403);
 
-        $validated = $request->validated();
+        $validated = $request->validate([
+            'category_id'   => ['required', 'exists:service_categories,id'],
+            'bio'           => ['required', 'string', 'max:2000'],
+            'working_hours' => ['nullable', 'string', 'max:255'],
+            'company_name'  => ['nullable', 'string', 'max:255'],
+        ], [
+            'category_id.required'  => 'Lütfen bir hizmet kategorisi seçin.',
+            'category_id.exists'    => 'Seçilen kategori geçerli değil.',
+            'bio.required'          => 'Biyografi alanı zorunludur.',
+            'working_hours.string'  => 'Çalışma saatleri geçerli bir metin olmalıdır.',
+            'company_name.string'   => 'Firma adı geçerli bir metin olmalıdır.',
+        ]);
 
-        $request->user()->serviceProvider()->updateOrCreate(
-            ['user_id' => $request->user()->id],
+        $user = $request->user();
+
+        $user->serviceProvider()->updateOrCreate(
+            ['user_id' => $user->id],
             [
-                'company_name' => $validated['company_name'],
-                'bio'          => $validated['bio'],
-                'category_id'  => $validated['category_id'],
+                'category_id'   => $validated['category_id'],
+                'bio'           => $validated['bio'],
+                'working_hours' => $validated['working_hours'] ?? null,
+                'company_name'  => $validated['company_name'] ?? ($user->serviceProvider->company_name ?? $user->name),
             ]
         );
 
         return redirect()
             ->route('provider.dashboard')
-            ->with('success', 'Profiliniz başarıyla güncellendi.');
+            ->with('success', 'İş profiliniz başarıyla güncellendi.');
+    }
+
+    public function update(Request $request): RedirectResponse
+    {
+        return $this->updateProfile($request);
+    }
+
+    public function acceptRequest(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'appointment_date' => ['nullable', 'date'],
+            'note'             => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $serviceRequest = \App\Models\ServiceRequest::where('provider_id', auth()->user()->serviceProvider->id)
+                            ->findOrFail($id);
+
+        $serviceRequest->update(['status' => 'accepted']);
+
+        $appointmentDate = !empty($validated['appointment_date'])
+            ? $validated['appointment_date']
+            : now()->addDay()->setHour(10)->setMinute(0);
+
+        $appointment = \App\Models\Appointment::updateOrCreate(
+            ['service_request_id' => $serviceRequest->id],
+            [
+                'customer_id'      => $serviceRequest->customer_id,
+                'provider_id'      => $serviceRequest->provider_id,
+                'appointment_date' => $appointmentDate,
+                'status'           => 'scheduled',
+                'note'             => $validated['note'] ?? null,
+            ]
+        );
+
+        if ($request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success'     => true,
+                'message'     => 'Talep başarıyla kabul edildi ve randevu oluşturuldu!',
+                'status'      => 'accepted',
+                'request_id'  => $serviceRequest->id,
+                'appointment' => [
+                    'id'               => $appointment->id,
+                    'appointment_date' => $appointment->appointment_date ? \Carbon\Carbon::parse($appointment->appointment_date)->format('d.m.Y H:i') : null,
+                ]
+            ]);
+        }
+        
+        return redirect()->back()->with('success', 'Talep kabul edildi ve randevu oluşturuldu!');
+    }
+
+    public function rejectRequest(Request $request, $id)
+    {
+        $serviceRequest = \App\Models\ServiceRequest::where('provider_id', auth()->user()->serviceProvider->id)
+                            ->findOrFail($id);
+
+        $serviceRequest->update(['status' => 'rejected']);
+
+        if ($request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success'    => true,
+                'message'    => 'Talep başarıyla reddedildi.',
+                'status'     => 'rejected',
+                'request_id' => $serviceRequest->id,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Talep reddedildi.');
+    }
+
+    public function updateRequestStatus(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:accepted,rejected'
+        ]);
+        $serviceRequest = \App\Models\ServiceRequest::where('provider_id', auth()->user()->serviceProvider->id)
+                            ->findOrFail($id);
+        $serviceRequest->update(['status' => $validated['status']]);
+        
+        $message = $validated['status'] == 'accepted' ? 'Talep başarıyla kabul edildi!' : 'Talep reddedildi.';
+
+        if ($request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success'    => true,
+                'message'    => $message,
+                'status'     => $validated['status'],
+                'request_id' => $serviceRequest->id,
+            ]);
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 }
