@@ -27,6 +27,8 @@ class UpdateProfileRequest extends FormRequest
             'bio'           => ['required', 'string', 'max:2000'],
             'category_id'   => ['required', 'exists:service_categories,id'],
             'working_hours' => ['nullable', 'string', 'max:255'],
+            'latitude'      => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'     => ['nullable', 'numeric', 'between:-180,180'],
         ];
     }
 
@@ -38,6 +40,8 @@ class UpdateProfileRequest extends FormRequest
             'bio.required'          => 'Biyografi alanı zorunludur.',
             'working_hours.string'  => 'Çalışma saatleri geçerli bir metin olmalıdır.',
             'company_name.string'   => 'Firma adı geçerli bir metin olmalıdır.',
+            'latitude.numeric'      => 'Enlem değeri geçerli bir sayı olmalıdır.',
+            'longitude.numeric'     => 'Boylam değeri geçerli bir sayı olmalıdır.',
         ];
     }
 }

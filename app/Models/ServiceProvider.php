@@ -13,7 +13,17 @@ class ServiceProvider extends Model
         'company_name',
         'bio',
         'working_hours',
+        'latitude',
+        'longitude',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'latitude'  => 'float',
+            'longitude' => 'float',
+        ];
+    }
 
     public function user(): BelongsTo
     {

@@ -53,12 +53,16 @@ class DashboardController extends Controller
             'bio'           => ['required', 'string', 'max:2000'],
             'working_hours' => ['nullable', 'string', 'max:255'],
             'company_name'  => ['nullable', 'string', 'max:255'],
+            'latitude'      => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'     => ['nullable', 'numeric', 'between:-180,180'],
         ], [
             'category_id.required'  => 'Lütfen bir hizmet kategorisi seçin.',
             'category_id.exists'    => 'Seçilen kategori geçerli değil.',
             'bio.required'          => 'Biyografi alanı zorunludur.',
             'working_hours.string'  => 'Çalışma saatleri geçerli bir metin olmalıdır.',
             'company_name.string'   => 'Firma adı geçerli bir metin olmalıdır.',
+            'latitude.numeric'      => 'Enlem değeri geçerli bir sayı olmalıdır.',
+            'longitude.numeric'     => 'Boylam değeri geçerli bir sayı olmalıdır.',
         ]);
 
         $user = $request->user();
@@ -70,6 +74,8 @@ class DashboardController extends Controller
                 'bio'           => $validated['bio'],
                 'working_hours' => $validated['working_hours'] ?? null,
                 'company_name'  => $validated['company_name'] ?? ($user->serviceProvider->company_name ?? $user->name),
+                'latitude'      => $validated['latitude'] ?? ($user->serviceProvider->latitude ?? 41.0082),
+                'longitude'     => $validated['longitude'] ?? ($user->serviceProvider->longitude ?? 28.9784),
             ]
         );
 

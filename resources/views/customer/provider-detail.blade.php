@@ -22,6 +22,10 @@
         </div>
     </x-slot>
 
+    <!-- Leaflet.js CDN (Tamamen Ücretsiz & OpenStreetMap Destekli) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <div class="py-10">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
             
@@ -76,6 +80,30 @@
                         @endif
                     </div>
                 </div>
+            </div>
+
+            <!-- Usta Konum ve Hizmet Bölgesi Haritası (Leaflet.js + OpenStreetMap) -->
+            <div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden p-6 sm:p-8 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-4">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                            </span>
+                            <h3 class="text-base font-extrabold text-gray-900">Usta Konumu & Hizmet Bölgesi</h3>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Ustanın merkez veya aktif hizmet verdiği bölgeyi harita üzerinden inceleyin.</p>
+                    </div>
+                    <span class="text-xs font-semibold px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full self-start sm:self-auto">
+                        📍 Haritada Gösteriliyor
+                    </span>
+                </div>
+
+                <!-- Harita Taşıyıcı Div -->
+                <div id="provider-map" class="w-full h-72 sm:h-80 rounded-2xl z-0 border border-gray-200 shadow-inner"></div>
             </div>
 
             <!-- Müşteri Değerlendirmeleri & Yorumları Bölümü -->
@@ -170,4 +198,39 @@
 
         </div>
     </div>
+
+    <!-- Leaflet Harita Başlatma Scripti -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const mapContainer = document.getElementById('provider-map');
+            if (!mapContainer || typeof L === 'undefined') return;
+
+            const lat = {{ (float) ($provider->latitude ?: 41.0082) }};
+            const lng = {{ (float) ($provider->longitude ?: 28.9784) }};
+            const providerName = {{ Js::from($provider->company_name ?: $provider->user->name) }};
+            const categoryName = {{ Js::from($provider->category->name ?? 'Hizmet Sağlayıcı') }};
+            const workingHours = {{ Js::from($provider->working_hours ?: 'Belirtilmedi') }};
+
+            // Haritayı usta koordinatlarına odaklayarak oluştur
+            const map = L.map('provider-map', {
+                scrollWheelZoom: false
+            }).setView([lat, lng], 13);
+
+            // OpenStreetMap ücretsiz karo katmanı (API key gerektirmez)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+            }).addTo(map);
+
+            // Usta Konum Pini (Marker) ve Popup
+            const marker = L.marker([lat, lng]).addTo(map);
+            marker.bindPopup(`
+                <div style="font-family: inherit; min-width: 160px; padding: 2px;">
+                    <div style="font-weight: 800; color: #111827; font-size: 14px; line-height: 1.3;">${providerName}</div>
+                    <div style="color: #4f46e5; font-size: 12px; font-weight: 700; margin-top: 3px;">🔧 ${categoryName}</div>
+                    <div style="color: #6b7280; font-size: 11px; margin-top: 4px;">🕒 ${workingHours}</div>
+                </div>
+            `).openPopup();
+        });
+    </script>
 </x-app-layout>

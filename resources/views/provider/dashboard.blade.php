@@ -25,9 +25,9 @@
         class="py-10" 
         x-data="{ 
             acceptModalOpen: false, 
+            isSubmitting: false,
             selectedRequest: { id: null, customerName: '', description: '', appointmentDate: '{{ now()->addDay()->format('Y-m-d\T10:00') }}', note: '' },
             requestsStatus: { @foreach($requests as $req) '{{ $req->id }}': '{{ $req->status }}', @endforeach },
-            loading: {},
             toast: { show: false, message: '', type: 'success' },
             showToast(msg, type = 'success') {
                 this.toast.message = msg;
@@ -36,15 +36,18 @@
                 setTimeout(() => { this.toast.show = false; }, 4000);
             },
             async submitAccept() {
+                if (this.isSubmitting) return;
                 const reqId = this.selectedRequest.id;
-                this.loading[reqId] = true;
+                if (!reqId) return;
+
+                this.isSubmitting = true;
                 try {
-                    const token = document.querySelector('meta[name=\'csrf-token\']').getAttribute('content');
+                    const token = document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content');
                     const response = await fetch('/provider/requests/' + reqId + '/accept', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': token,
+                            'X-CSRF-TOKEN': token || '',
                             'X-Requested-With': 'XMLHttpRequest',
                             'Accept': 'application/json'
                         },
@@ -62,22 +65,22 @@
                         this.showToast(data.message || 'İşlem gerçekleştirilemedi.', 'error');
                     }
                 } catch (err) {
-                    console.error(err);
+                    console.error('AJAX error, submitting via standard form:', err);
                     document.getElementById('accept-form-' + reqId)?.submit();
                 } finally {
-                    this.loading[reqId] = false;
+                    this.isSubmitting = false;
                 }
             },
             async rejectRequest(reqId) {
                 if (!confirm('Bu talebi reddetmek istediğinizden emin misiniz?')) return;
-                this.loading[reqId] = true;
+                this.isSubmitting = true;
                 try {
-                    const token = document.querySelector('meta[name=\'csrf-token\']').getAttribute('content');
+                    const token = document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content');
                     const response = await fetch('/provider/requests/' + reqId + '/reject', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': token,
+                            'X-CSRF-TOKEN': token || '',
                             'X-Requested-With': 'XMLHttpRequest',
                             'Accept': 'application/json'
                         }
@@ -90,10 +93,10 @@
                         this.showToast(data.message || 'İşlem gerçekleştirilemedi.', 'error');
                     }
                 } catch (err) {
-                    console.error(err);
+                    console.error('AJAX error, submitting via standard form:', err);
                     document.getElementById('reject-form-' + reqId)?.submit();
                 } finally {
-                    this.loading[reqId] = false;
+                    this.isSubmitting = false;
                 }
             }
         }"
@@ -278,9 +281,8 @@
                                                 <!-- Randevu ile Kabul Et Butonu -->
                                                 <button 
                                                     type="button"
-                                                    :disabled="loading[{{ $request->id }}]"
                                                     @click="selectedRequest = { id: {{ $request->id }}, customerName: '{{ addslashes($request->customer->name) }}', description: '{{ addslashes(Str::limit($request->description, 60)) }}', appointmentDate: '{{ now()->addDay()->format('Y-m-d\T10:00') }}', note: '' }; acceptModalOpen = true"
-                                                    class="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center cursor-pointer disabled:opacity-50"
+                                                    class="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center cursor-pointer"
                                                 >
                                                     <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
@@ -291,12 +293,10 @@
                                                 <!-- Reddet Butonu (AJAX) -->
                                                 <button 
                                                     type="button"
-                                                    :disabled="loading[{{ $request->id }}]"
                                                     @click="rejectRequest({{ $request->id }})"
-                                                    class="bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-semibold py-1.5 px-3 rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
+                                                    class="bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-semibold py-1.5 px-3 rounded-xl text-xs transition cursor-pointer"
                                                 >
-                                                    <span x-show="!loading[{{ $request->id }}]">Reddet</span>
-                                                    <span x-show="loading[{{ $request->id }}]">İşleniyor...</span>
+                                                    Reddet
                                                 </button>
 
                                                 <!-- Fallback Form (Non-JS) -->
@@ -361,7 +361,6 @@
                             name="appointment_date" 
                             id="modal_appointment_date" 
                             x-model="selectedRequest.appointmentDate"
-                            min="{{ now()->format('Y-m-d\TH:i') }}"
                             required 
                             class="w-full rounded-2xl border-gray-300 focus:border-indigo-600 focus:ring-indigo-100 text-sm py-2.5"
                         >
@@ -381,14 +380,14 @@
                     </div>
 
                     <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
-                        <button type="button" @click="acceptModalOpen = false" class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-xl text-xs">Vazgeç</button>
+                        <button type="button" @click="acceptModalOpen = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-xs transition cursor-pointer">Vazgeç</button>
                         <button 
                             type="submit" 
-                            :disabled="loading[selectedRequest.id]"
-                            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50"
+                            :disabled="isSubmitting"
+                            class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-md transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <span x-show="!loading[selectedRequest.id]">Randevuyu Onayla & Kaydet</span>
-                            <span x-show="loading[selectedRequest.id]">Kaydediliyor...</span>
+                            <span x-show="!isSubmitting">Randevuyu Onayla & Kaydet</span>
+                            <span x-show="isSubmitting" style="display: none;">Kaydediliyor...</span>
                         </button>
                     </div>
                 </form>
