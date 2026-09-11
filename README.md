@@ -1,59 +1,113 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# ServiGo - Servis ve Usta Bulma Platformu
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+ServiGo; ev veya iş yerinde tadilat, bakım ve onarım ihtiyacı olan müşteriler ile elektrik, sıhhi tesisat gibi farklı alanlarda hizmet veren ustaları doğrudan buluşturan iki taraflı bir pazar yeri (marketplace) web uygulamasıdır.
 
-## About Laravel
+Proje; Laravel (PHP) çatısı, MySQL ilişkisel veritabanı, Tailwind CSS ve Leaflet.js kütüphanesi kullanılarak MVC (Model-View-Controller) mimarisiyle geliştirilmiştir.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Proje Kapsamı ve Özellikler
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+* Çok Rollü Kimlik Doğrulama: Müşteri, Hizmet Sağlayıcı (Usta) ve Yönetici (Admin) için rol bazlı kayıt ve giriş akışları.
+* Kategori ve Usta Arama: Kategori bazlı filtreleme ve arama kutusu üzerinden anahtar kelime sorgulama.
+* Konum ve Harita Entegrasyonu (Leaflet.js): Usta profillerinde OpenStreetMap tabanlı interaktif harita gösterimi ve ustanın harita üzerinden koordinat (enlem/boylam) belirleyebilmesi.
+* Talep ve Randevu Akışı: Müşterinin talep oluşturması, ustanın talebi inceleyerek randevuya dönüştürmesi (Fetch API / AJAX destekli).
+* Değerlendirme ve Puanlama: Yalnızca hizmeti tamamlanmış müşterilerin 1-5 arası puan ve yorum bırakabilmesi, ortalama puanın dinamik hesaplanması.
+* Yönetici Paneli: Kategori yönetimi (CRUD), kullanıcı denetimi, platform istatistikleri ve moderasyon araçları.
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Mimari Karar: Rol ve Yetki Yönetimi
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Şartnamede belirtilen rol/yetki mimarisi araştırması doğrultusunda; sistemdeki aktörlerin sınırları net ve hiyerarşik (Müşteri, Usta, Admin) olduğu için harici bir paket (Spatie vb.) yerine Laravel'in yerleşik yapısına uygun özel bir Middleware (CheckRole) geliştirilmiştir.
 
-## Laravel Sponsors
+Bu tercihin gerekçeleri:
+1. Dış paket bağımlılığını en aza indirmek.
+2. Basit rol kontrolleri için fazladan veritabanı tabloları ve karmaşık izin sorguları oluşturmayarak performansı korumak.
+3. Rota güvenliğini doğrudan çekirdek katmanda yönetmek.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## Kullanıcı Rolleri ve Yetki Matrisi
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| Yetki / İşlem | Müşteri | Usta | Yönetici (Admin) |
+| :--- | :---: | :---: | :---: |
+| Kayıt Olma ve Giriş | Evet | Evet | Evet |
+| Kategori Listeleme ve Arama | Evet | Hayır | Evet |
+| Hizmet Talebi Oluşturma | Evet | Hayır | Hayır |
+| Talep Kabul / Reddetme | Hayır | Evet | Hayır |
+| Randevu Takvimi Yönetimi | Görüntüleme / İptal | Görüntüleme / Güncelleme | Tam Yetki |
+| Harita Konumu Güncelleme | Hayır | Evet | Hayır |
+| Yorum ve Puan Verme | Evet (Tamamlanan işe) | Hayır | Moderasyon / Silme |
+| Kategori Yönetimi (CRUD) | Hayır | Hayır | Evet |
+| Sistem İstatistiklerini Görme | Hayır | Hayır | Evet |
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Veritabanı Modeli ve İlişkiler
 
-## Code of Conduct
+* users tablosu ile service_providers arasında 1-e-1 ilişki bulunur (hasOne / belongsTo).
+* service_categories tablosu ile service_providers arasında 1-e-Çok ilişki bulunur (hasMany / belongsTo).
+* users (müşteri) ile service_requests arasında 1-e-Çok ilişki bulunur (hasMany).
+* service_requests tablosu ile appointments arasında 1-e-1 ilişki bulunur.
+* service_providers ile reviews arasında 1-e-Çok ilişki bulunur (hasMany).
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## Kurulum Adımları
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Projeyi yerel ortamda çalıştırmak için:
 
-## License
+### 1. Depoyu Klonlayın
+    git clone https://github.com/ErenCreates/ServiGo.git
+    cd ServiGo
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 2. Bağımlılıkları Kurun
+    composer install
+    npm install
+
+### 3. Çevre Değişkenlerini Yapılandırın
+    cp .env.example .env
+    php artisan key:generate
+
+.env dosyasındaki MySQL bağlantı ayarlarını düzenleyin:
+    DB_CONNECTION=mysql
+    DB_HOST=127.0.0.1
+    DB_PORT=3306
+    DB_DATABASE=servigo
+    DB_USERNAME=root
+    DB_PASSWORD=
+
+### 4. Veritabanını ve Test Verilerini Yükleyin
+    php artisan migrate:fresh --seed
+
+### 5. Sunucuyu Başlatın
+İki ayrı terminal penceresinde frontend derleyicisini ve yerel sunucuyu çalıştırın:
+    npm run dev
+    php artisan serve
+
+Tarayıcıdan http://127.0.0.1:8000 adresine gidin.
+
+---
+
+## Test Hesapları
+
+Sistemdeki tüm hazır test hesaplarının şifresi 12345678 olarak ayarlanmıştır:
+
+* Admin: admin@servigo.com
+* Müşteri: musteri1@servigo.com ... musteri10@servigo.com
+* Usta: usta1@servigo.com ... usta10@servigo.com (İstanbul koordinatları ile tanımlıdır)
+
+---
+
+## Test Paketi
+
+Uygulamanın ana senaryoları PHPUnit ile doğrulanmıştır:
+    php artisan test
+
+Yazılan testler:
+* AuthTest: Rol bazlı kayıt, giriş ve yetkisiz erişim kontrolleri.
+* AppointmentTest: Talep kabulü ve randevu oluşturma süreçleri.
+* ReviewTest: Puanlama kuralları ve mükerrer yorum engelleme.
+* AjaxRequestStatusTest: Fetch API ile durum güncelleme akışları.
+* ProviderLocationMapTest: Harita koordinatlarının kaydedilmesi ve veri tutarlılığı.
